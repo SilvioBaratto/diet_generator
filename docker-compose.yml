@@ -1,0 +1,64 @@
+services:
+  # PostgreSQL Database
+  db:
+    image: postgres:16-alpine
+    container_name: diet_db
+    environment:
+      POSTGRES_DB: diet_db
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    ports:
+      - "5433:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d diet_db"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - diet_network
+
+  # FastAPI Backend with hot reload
+  api:
+    build:
+      context: ./api_diet
+      dockerfile: Dockerfile
+    container_name: diet_api
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      ENVIRONMENT: development
+      DEBUG: "True"
+      DATABASE_URL: postgresql://postgres:postgres@db:5432/diet_db
+      JWT_SECRET_KEY: "dev-secret-key-change-in-production"
+      CORS_ORIGINS: "http://localhost,http://localhost:4200,http://localhost:80"
+      LOG_LEVEL: INFO
+      MY_OPENAI_KEY: ${MY_OPENAI_KEY}
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./api_diet:/app
+    networks:
+      - diet_network
+    command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
+
+  # Angular Frontend with nginx and API proxy
+  frontend:
+    build:
+      context: ./frontend_diet
+      dockerfile: Dockerfile
+    container_name: diet_frontend
+    depends_on:
+      - api
+    ports:
+      - "4200:80"
+    networks:
+      - diet_network
+
+volumes:
+  postgres_data:
+
+networks:
+  diet_network:

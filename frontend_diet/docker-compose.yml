@@ -1,0 +1,21 @@
+services:
+  documind-frontend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: EY-documind-web-ey
+    ports:
+      - "4200:80"
+    environment:
+      - NODE_ENV=production
+    restart: unless-stopped
+    networks:
+      - documind-network
+    labels:
+      - "com.EY.documind.component=frontend"
+      - "com.EY.documind.environment=production"
+
+networks:
+  documind-network:
+    driver: bridge
+    name: documind-network
